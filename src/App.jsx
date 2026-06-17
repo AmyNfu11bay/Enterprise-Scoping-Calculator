@@ -211,7 +211,7 @@ function KC({ l, v, s, c, h }) {
 }
 
 // ── Main App ──────────────────────────────────────────────────────────────────
-function App() {
+export default function App() {
   const [view, setView] = useState('inputs');
   const asm = DEFAULT_ASSUMPTIONS;
   const [co, setCo] = useState('');
