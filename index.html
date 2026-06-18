@@ -363,6 +363,7 @@ function App() {
   const [hRec, setHRec] = useState(3000);
   const [srcSys, setSrcSys] = useState('');
   const [notes, setNotes] = useState('');
+  const [peFirm, setPeFirm] = useState(false);
 
   const inp = useMemo(() => ({ e2e, vrms, migrationScope: migSc, integrationCount: intCt, multiEntity: mEnt, customWorkflow: cwf, compressedTimeline: comp, onsiteDays: onD, travelEst: trvE, dataScope: dSc, histRecs: hRec, sourceSystem: srcSys, locations: locs }), [e2e, vrms, migSc, intCt, mEnt, cwf, comp, onD, trvE, dSc, hRec, srcSys, locs]);
   const qT = useMemo(() => { const p = scoreComplexity(inp, asm.weights); return getTier(p, inp, asm); }, [inp]);
@@ -401,11 +402,12 @@ function App() {
       notes,
       sessRows: SESSION_TOPICS.map(t => ({ ...t, count: eSess[t.id] || 0 })),
       extraLines: [],
+      peFirm,
     });
     setView('results');
   };
 
-  const reset = () => { setView('inputs'); setCo(''); setBrands(1); setLocs(1); setE2e(false); setVrms(false); setMigSc('none'); setIntCt(0); setMEnt(false); setCwf(false); setComp(false); setOnD(0); setTrvE(0); setDSc({ core4: true, historical: false, lastPerformed: false, globalServices: false, taxLocations: false }); setHRec(3000); setSrcSys(''); setNotes(''); setSess(null); setRState(null); };
+  const reset = () => { setView('inputs'); setCo(''); setBrands(1); setLocs(1); setE2e(false); setVrms(false); setMigSc('none'); setIntCt(0); setMEnt(false); setCwf(false); setComp(false); setOnD(0); setTrvE(0); setDSc({ core4: true, historical: false, lastPerformed: false, globalServices: false, taxLocations: false }); setHRec(3000); setSrcSys(''); setNotes(''); setSess(null); setRState(null); setPeFirm(false); };
 
   const upd = (key, val) => setRState(p => ({...p, [key]: val}));
 
@@ -470,7 +472,7 @@ function App() {
               </div>
               <div>
                 <h1 style={{fontSize:'20px',fontWeight:'700',color:'#171717'}}>Enterprise Scoping</h1>
-                <p style={{fontSize:'12px',color:'#737373'}}>Fill in details below. Hours and pricing update live.</p>
+                <p style={{fontSize:'12px',color:'#737373'}}>Fill in details below. Hours and pricing update live. <span style={{fontWeight:'700',color:'#CC0000'}}>Internal Only — Do not share screen.</span></p>
               </div>
             </div>
 
@@ -483,6 +485,10 @@ function App() {
                 <NI label="Brands / Entities" value={brands} onChange={setBrands} min={1} />
                 <NI label="Shop Locations" value={locs} onChange={setLocs} min={1} />
                 <NI label="Integrations" value={intCt} onChange={setIntCt} min={0} hint={intCt>=3?'+4 pts':intCt>=1?'+1 pt':''} />
+                <div style={{display:'flex',alignItems:'center',gap:'10px',padding:'8px 12px',border:'2px solid ' + (peFirm?'#CC0000':'#e5e5e5'),borderRadius:'8px',cursor:'pointer',background:peFirm?'#fff5f5':'#fff',transition:'all 0.15s'}} onClick={() => setPeFirm(!peFirm)}>
+                  <input type="checkbox" id="peFirmChk" checked={peFirm} onChange={e => setPeFirm(e.target.checked)} style={{width:'16px',height:'16px',accentColor:'#CC0000',cursor:'pointer',flexShrink:0}} />
+                  <label htmlFor="peFirmChk" style={{fontSize:'11px',fontWeight:'700',color:peFirm?'#CC0000':'#737373',textTransform:'uppercase',letterSpacing:'0.05em',cursor:'pointer',userSelect:'none'}}>PE Firm</label>
+                </div>
               </div>
             </Panel>
 
@@ -877,6 +883,18 @@ function App() {
                     <div>{body}</div>
                   </div>
                 ))}
+                {rState.peFirm && (
+                  <>
+                    <div>
+                      <div style={{fontWeight:'700',marginBottom:'2px'}}>9. Consolidation of Acquired Businesses</div>
+                      <div>Existing Fullbay customer agreements remain in full force and effect through their current subscription term and are not subject to consolidation, amendment, or repricing under this Agreement. Upon the renewal date of an applicable existing agreement, the customer may request in writing that such agreement be consolidated under this Agreement, subject to written confirmation by Fullbay at that time. Fullbay reserves the right to decline consolidation or to condition it on revised pricing or terms.</div>
+                    </div>
+                    <div>
+                      <div style={{fontWeight:'700',marginBottom:'2px'}}>10. Implementation</div>
+                      <div>Implementation, onboarding, and professional services are not included in this Agreement and are subject to a separate Statement of Work to be mutually agreed upon by the parties.</div>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
