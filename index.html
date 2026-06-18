@@ -14,22 +14,50 @@ input, select, textarea, button { font-family: inherit; }
 table { width: 100%; border-collapse: collapse; }
 th, td { vertical-align: middle; }
 select { background-color: #fff; }
-input:focus, select:focus, textarea:focus { border-color: #dc2626 !important; outline: none; }
+input:focus, select:focus, textarea:focus { outline: 2px solid #CC0000; outline-offset: 1px; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 svg { display: inline-block; vertical-align: middle; }
+
+/* Editable field styles */
+.editable {
+  border: 1px dashed transparent;
+  border-radius: 4px;
+  padding: 2px 4px;
+  cursor: text;
+  transition: border-color 0.15s;
+  min-width: 40px;
+  display: inline-block;
+}
+.editable:hover { border-color: #CC0000; background: #fff8f8; }
+.editable:focus { outline: 2px solid #CC0000; outline-offset: 1px; border-color: transparent; background: #fff; }
+.editable-block {
+  border: 1px dashed transparent;
+  border-radius: 4px;
+  padding: 4px 6px;
+  cursor: text;
+  transition: border-color 0.15s;
+  width: 100%;
+}
+.editable-block:hover { border-color: #CC0000; background: #fff8f8; }
+.editable-block:focus { outline: 2px solid #CC0000; outline-offset: 1px; border-color: transparent; background: #fff; }
+.edit-hint { font-size: 11px; color: #a3a3a3; margin-bottom: 8px; }
+.edit-hint span { color: #CC0000; }
+
 @media print {
   @page { size: letter; margin: .5in; }
   body { background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .no-print { display: none !important; }
   .sticky-header { position: static !important; }
   * { box-shadow: none !important; }
+  .editable, .editable-block { border: none !important; background: transparent !important; padding: 0 !important; }
+  .edit-hint { display: none !important; }
 }
 </style>
 </head>
 <body>
 <div id="root"></div>
 <script type="text/babel">
-const { useState, useMemo, useCallback } = React;
+const { useState, useMemo, useCallback, useRef } = React;
 
 const Icon = ({ d, size = 16 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -53,6 +81,7 @@ const Icons = {
   Clock: () => <Icon d={["M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Z","M12 6v6l4 2"]} />,
   Zap: () => <Icon d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" />,
   Shield: () => <Icon d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />,
+  Edit2: () => <Icon d={["M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"]} />,
 };
 
 const DEFAULT_ASSUMPTIONS = {
@@ -118,21 +147,6 @@ const AL = { kickOff: 'Kick Off', trainingConfig: 'Training & Config', digitalPr
 const TL = { standard: 'Standard', complex: 'Complex', high: 'High Complexity' };
 const TC = { standard: '#22c55e', complex: '#f59e0b', high: '#CC0000' };
 
-const OUT_OF_SCOPE = [
-  { item: 'Report building, dashboard creation, or custom scripting', via: 'Available via Professional Services' },
-  { item: 'Process documentation, staff communications, or other customer-owned assets', via: 'Available via Technical Solution Engineering' },
-  { item: 'End-user training beyond sessions listed in this scope', via: 'Available via Advanced Feature Training or Additional Training Hours' },
-  { item: 'Execution of User Acceptance Testing (UAT) -- customer is responsible for UAT sign-off', via: null },
-  { item: 'Help desk services or user-level troubleshooting post-launch', via: 'Covered by Fullbay Customer Success' },
-  { item: 'Custom automation or integration middleware', via: 'Available via Custom Reporting & Automation' },
-  { item: 'Custom software development', via: null },
-  { item: 'Coordination with customer vendors or external consultants', via: 'Available via Technical Solution Engineering' },
-  { item: '3rd-party licenses or subscriptions required for integrations (e.g., Mitchell1 ProDemand)', via: null },
-  { item: 'Data cleansing, deduplication, correction, reconciliation, or transformation beyond standard template mapping', via: null },
-  { item: 'Integrations not explicitly listed in this scope', via: 'Must be separately scoped in writing' },
-  { item: 'Complex or advanced configuration of non-standard workflows unless selected as a complexity driver above', via: null },
-];
-
 function scoreComplexity(inp, w) {
   let p = 0;
   if (inp.e2e) p += w.e2e; if (inp.vrms) p += w.vrms;
@@ -179,7 +193,47 @@ function calcScope(inp, sess, a) {
   return { pts, tS, core: Math.round(core*10)/10, intH, onsH, base: Math.round(base*10)/10, uD, uT, sub: Math.round(sub*10)/10, fl, af: Math.round(af*10)/10, fA, cH, tH, alloc, dL, dC, dbFee: sys?.fee==='db-fee', noData: sys?.fee==='not-available', sysWarn: sys?.warning, oC, trv, bP, mP, gT };
 }
 
-// ── Shared UI components ──────────────────────────────────────────────────────
+// Editable inline span
+function E({ value, onChange, style, multiline, className }) {
+  if (multiline) {
+    return (
+      <span
+        contentEditable
+        suppressContentEditableWarning
+        className={className || "editable-block"}
+        style={style}
+        onBlur={e => onChange(e.target.innerText)}
+        dangerouslySetInnerHTML={{ __html: value }}
+      />
+    );
+  }
+  return (
+    <span
+      contentEditable
+      suppressContentEditableWarning
+      className={className || "editable"}
+      style={style}
+      onBlur={e => onChange(e.target.innerText)}
+      dangerouslySetInnerHTML={{ __html: value }}
+    />
+  );
+}
+
+// Editable number
+function EN({ value, onChange, style }) {
+  return (
+    <span
+      contentEditable
+      suppressContentEditableWarning
+      className="editable"
+      style={{ minWidth: '40px', textAlign: 'right', ...style }}
+      onBlur={e => { const v = parseFloat(e.target.innerText.replace(/[^0-9.]/g,'')); if (!isNaN(v)) onChange(v); else e.target.innerText = value; }}
+      dangerouslySetInnerHTML={{ __html: String(value) }}
+    />
+  );
+}
+
+// ── Shared UI ─────────────────────────────────────────────────────────────────
 function Panel({ title, icon: IC, children }) {
   const [o, setO] = useState(true);
   return (
@@ -250,11 +304,18 @@ function KC({ l, v, s, c, h }) {
   );
 }
 
-function SigLine({ label }) {
+function SigBlock({ party }) {
   return (
-    <div style={{flex:1,minWidth:'200px'}}>
-      <div style={{borderBottom:'1px solid #171717',marginBottom:'4px',height:'32px'}}></div>
-      <div style={{fontSize:'11px',color:'#737373'}}>{label}</div>
+    <div>
+      <div style={{fontWeight:'700',fontSize:'12px',textTransform:'uppercase',letterSpacing:'0.05em',color:'#737373',marginBottom:'16px'}}>{party}</div>
+      <div style={{display:'flex',flexDirection:'column',gap:'20px'}}>
+        {['Signature','Name','Title','Date'].map(l => (
+          <div key={l}>
+            <div style={{borderBottom:'1px solid #171717',marginBottom:'4px',height:'28px'}}></div>
+            <div style={{fontSize:'11px',color:'#737373'}}>{l}</div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -294,9 +355,64 @@ function App() {
   const scope = useMemo(() => calcScope(inp, eSess, asm), [inp, eSess]);
   const sys = srcSys ? findSystem(srcSys) : null;
 
-  const reset = () => { setView('inputs'); setCo(''); setBrands(1); setLocs(1); setE2e(false); setVrms(false); setMigSc('none'); setIntCt(0); setMEnt(false); setCwf(false); setComp(false); setOnD(0); setTrvE(0); setDSc({ core4: true, historical: false, lastPerformed: false, globalServices: false, taxLocations: false }); setHRec(3000); setSrcSys(''); setNotes(''); setSess(null); };
+  // Editable results state — initialized when view switches to results
+  const [rState, setRState] = useState(null);
 
-  const s = { gap8: {display:'flex',flexDirection:'column',gap:'8px'}, row: {display:'flex',justifyContent:'space-between',alignItems:'center'} };
+  const goToResults = () => {
+    const s = calcScope(inp, eSess, asm);
+    setRState({
+      co: co || 'Customer',
+      brands, locs, intCt,
+      tier: TL[qT],
+      pts: s.pts,
+      tS: s.tS,
+      tH: s.tH,
+      core: s.core,
+      intH: s.intH,
+      onsH: s.onsH,
+      base: s.base,
+      uD: s.uD.map(u => ({...u})),
+      uT: s.uT,
+      sub: s.sub,
+      fl: s.fl,
+      af: s.af,
+      fA: s.fA,
+      cH: s.cH,
+      alloc: s.alloc.map(a => ({...a})),
+      dL: s.dL.map(d => ({...d})),
+      dC: s.dC,
+      oC: s.oC,
+      trv: s.trv,
+      bP: s.bP,
+      mP: s.mP,
+      gT: s.gT,
+      billRate: asm.billRate,
+      contingency: asm.contingency,
+      targetMargin: asm.targetMargin,
+      onsiteRatePerDay: asm.onsiteRatePerDay,
+      onD,
+      notes,
+      // session rows for editing
+      sessRows: SESSION_TOPICS.map(t => ({ ...t, count: eSess[t.id] || 0 })),
+    });
+    setView('results');
+  };
+
+  const reset = () => { setView('inputs'); setCo(''); setBrands(1); setLocs(1); setE2e(false); setVrms(false); setMigSc('none'); setIntCt(0); setMEnt(false); setCwf(false); setComp(false); setOnD(0); setTrvE(0); setDSc({ core4: true, historical: false, lastPerformed: false, globalServices: false, taxLocations: false }); setHRec(3000); setSrcSys(''); setNotes(''); setSess(null); setRState(null); };
+
+  const upd = (key, val) => setRState(p => ({...p, [key]: val}));
+
+  // Recompute derived totals when session counts change
+  const recomputeTotals = (newSessRows) => {
+    const newTotalSessions = newSessRows.reduce((s, r) => s + r.count, 0);
+    setRState(p => ({...p, sessRows: newSessRows, tS: newTotalSessions}));
+  };
+
+  const updSessRow = (id, delta) => {
+    if (!rState) return;
+    const newRows = rState.sessRows.map(r => r.id === id ? {...r, count: Math.max(0, r.count + delta)} : r);
+    recomputeTotals(newRows);
+  };
 
   return (
     <div style={{minHeight:'100vh',background:'#fafafa'}}>
@@ -313,9 +429,9 @@ function App() {
           </div>
           <div style={{display:'flex',alignItems:'center',gap:'12px'}}>
             {view==='results' && <>
-              <button type="button" onClick={() => setView('inputs')} style={{background:'none',border:'none',cursor:'pointer',fontSize:'12px',fontWeight:'600',color:'#525252'}}>Edit</button>
+              <button type="button" onClick={() => setView('inputs')} style={{background:'none',border:'none',cursor:'pointer',fontSize:'12px',fontWeight:'600',color:'#525252'}}>Edit Inputs</button>
               <button type="button" onClick={() => window.print()} style={{padding:'6px 12px',background:'#171717',color:'#fff',border:'none',borderRadius:'8px',fontSize:'12px',fontWeight:'600',cursor:'pointer',display:'flex',alignItems:'center',gap:'4px'}}>
-                <Icons.Printer /> Print
+                <Icons.Printer /> Print / Save PDF
               </button>
             </>}
             <button type="button" onClick={reset} style={{background:'none',border:'none',cursor:'pointer',color:'#a3a3a3'}}><Icons.RotateCcw /></button>
@@ -330,7 +446,7 @@ function App() {
           <div style={{display:'flex',flexDirection:'column',gap:'20px'}}>
             <div style={{display:'flex',alignItems:'center',gap:'12px',marginBottom:'4px'}}>
               <div style={{width:'36px',height:'36px',background:'#CC0000',borderRadius:'10px',display:'flex',alignItems:'center',justifyContent:'center'}}>
-                <Icons.Calculator size={20} />
+                <span style={{color:'#fff'}}><Icons.Calculator size={20} /></span>
               </div>
               <div>
                 <h1 style={{fontSize:'20px',fontWeight:'700',color:'#171717'}}>Enterprise Scoping</h1>
@@ -338,7 +454,6 @@ function App() {
               </div>
             </div>
 
-            {/* Customer Profile */}
             <Panel title="Customer Profile" icon={Icons.Building2}>
               <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'16px',marginTop:'4px'}}>
                 <div style={{gridColumn:'span 3'}}>
@@ -351,7 +466,6 @@ function App() {
               </div>
             </Panel>
 
-            {/* Complexity Drivers */}
             <Panel title="Complexity Drivers" icon={Icons.Gauge}>
               <p style={{fontSize:'12px',color:'#737373',marginBottom:'12px',marginTop:'4px'}}>Select all that apply. These drive tier and hour uplifts.</p>
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px'}}>
@@ -393,7 +507,6 @@ function App() {
               </div>
             </Panel>
 
-            {/* Data Migration */}
             <Panel title="Data Migration" icon={Icons.Database}>
               <div style={{marginBottom:'16px',marginTop:'4px'}}>
                 <label style={{display:'block',fontSize:'11px',fontWeight:'700',color:'#737373',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'4px'}}>Current System</label>
@@ -408,7 +521,7 @@ function App() {
                 {sys?.fee==='not-available' && <div style={{marginTop:'8px',padding:'8px',background:'#fffbeb',border:'1px solid #fde68a',borderRadius:'6px',fontSize:'12px',color:'#78350f',fontWeight:'600'}}>Data import not available from {sys.name}</div>}
                 {sys?.warning && <div style={{marginTop:'8px',padding:'8px',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:'6px',fontSize:'12px',color:'#b91c1c'}}>{sys.warning}</div>}
               </div>
-              <div style={s.gap8}>
+              <div style={{display:'flex',flexDirection:'column',gap:'8px'}}>
                 <CI checked={dSc.core4} onChange={v => setDSc({...dSc,core4:v})} label="Core 4 Data Import" sub={`$495/shop x ${locs} = $${(locs*495).toLocaleString()}`} />
                 <CI checked={dSc.historical} onChange={v => setDSc({...dSc,historical:v})} label="Historical Record Import" sub="Priced by record count" />
                 {dSc.historical && (
@@ -429,7 +542,6 @@ function App() {
               </div>
             </Panel>
 
-            {/* Session Plan */}
             <Panel title="Session Plan" icon={Icons.Clock}>
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'12px',marginTop:'4px'}}>
                 <p style={{fontSize:'12px',color:'#737373'}}>Auto-suggested for <strong>{TL[qT]}</strong> tier. Adjust as needed.</p>
@@ -474,20 +586,18 @@ function App() {
               </div>
             </Panel>
 
-            {/* Notes */}
             <div>
               <label style={{display:'block',fontSize:'11px',fontWeight:'700',color:'#737373',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'4px'}}>Scope Notes</label>
               <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} placeholder="Special requirements, context, risks..." style={{width:'100%',padding:'8px 12px',border:'2px solid #e5e5e5',borderRadius:'8px',fontSize:'14px',resize:'vertical'}} />
             </div>
 
-            {/* Sticky footer */}
             <div className="no-print" style={{position:'sticky',bottom:0,background:'#171717',color:'#fff',borderRadius:'12px',padding:'16px',display:'flex',flexWrap:'wrap',alignItems:'center',justifyContent:'space-between',gap:'12px',boxShadow:'0 -4px 20px rgba(0,0,0,0.2)'}}>
               <div style={{display:'flex',gap:'20px',fontSize:'14px',flexWrap:'wrap'}}>
                 <span><span style={{color:'#a3a3a3'}}>Tier: </span><span style={{fontWeight:'700',color:TC[qT]}}>{TL[qT]}</span></span>
                 <span><span style={{color:'#a3a3a3'}}>Hrs: </span><span style={{fontWeight:'700'}}>{scope.tH}</span></span>
                 <span><span style={{color:'#a3a3a3'}}>Total: </span><span style={{fontWeight:'700',fontSize:'18px'}}>${scope.gT.toLocaleString()}</span></span>
               </div>
-              <button type="button" onClick={() => setView('results')} style={{padding:'10px 24px',background:'#CC0000',color:'#fff',fontWeight:'600',borderRadius:'8px',fontSize:'14px',border:'none',cursor:'pointer',display:'flex',alignItems:'center',gap:'8px'}}>
+              <button type="button" onClick={goToResults} style={{padding:'10px 24px',background:'#CC0000',color:'#fff',fontWeight:'600',borderRadius:'8px',fontSize:'14px',border:'none',cursor:'pointer',display:'flex',alignItems:'center',gap:'8px'}}>
                 Generate Scope <Icons.ArrowRight />
               </button>
             </div>
@@ -495,8 +605,13 @@ function App() {
         )}
 
         {/* ── RESULTS VIEW ── */}
-        {view === 'results' && (
+        {view === 'results' && rState && (
           <div style={{display:'flex',flexDirection:'column',gap:'24px'}}>
+
+            {/* Edit hint */}
+            <div className="no-print edit-hint" style={{padding:'10px 14px',background:'#f0f9ff',border:'1px solid #bae6fd',borderRadius:'8px',fontSize:'12px',color:'#0369a1'}}>
+              <strong>Editing mode:</strong> Click any <span style={{color:'#CC0000'}}>field</span> to edit it directly. Session counts can be adjusted with +/- buttons. Click <strong>Print / Save PDF</strong> when ready.
+            </div>
 
             {/* Legal banner */}
             <div style={{padding:'12px 16px',background:'#fef9c3',border:'1px solid #fde047',borderRadius:'8px',fontSize:'12px',color:'#713f12',lineHeight:'1.5'}}>
@@ -506,17 +621,24 @@ function App() {
             {/* Header */}
             <div style={{borderBottom:'2px solid #CC0000',paddingBottom:'16px'}}>
               <div style={{fontSize:'11px',fontWeight:'700',letterSpacing:'0.1em',textTransform:'uppercase',color:'#CC0000',marginBottom:'4px'}}>Enterprise Implementation Scope</div>
-              <h1 style={{fontSize:'28px',fontWeight:'700',color:'#171717'}}>{co||'Customer'}</h1>
-              <p style={{fontSize:'14px',color:'#737373',marginTop:'4px'}}>{brands} brand{brands!==1?'s':''} / {locs} location{locs!==1?'s':''} / {intCt} integration{intCt!==1?'s':''} / {TL[qT]}</p>
+              <h1 style={{fontSize:'28px',fontWeight:'700',color:'#171717'}}>
+                <E value={rState.co} onChange={v => upd('co', v)} style={{fontSize:'28px',fontWeight:'700'}} />
+              </h1>
+              <p style={{fontSize:'14px',color:'#737373',marginTop:'4px'}}>
+                <E value={String(rState.brands)} onChange={v => upd('brands', v)} /> brand{rState.brands!=='1'?'s':''} /&nbsp;
+                <E value={String(rState.locs)} onChange={v => upd('locs', v)} /> location{rState.locs!=='1'?'s':''} /&nbsp;
+                <E value={String(rState.intCt)} onChange={v => upd('intCt', v)} /> integration{rState.intCt!=='0'?'s':''} /&nbsp;
+                <E value={rState.tier} onChange={v => upd('tier', v)} />
+              </p>
             </div>
 
             {/* KPI cards */}
             <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:'12px'}}>
-              <KC l="Complexity" v={`${scope.pts} pts`} s={TL[qT]} c={TC[qT]} />
-              <KC l="Sessions" v={scope.tS} />
-              <KC l="Hours" v={scope.tH} />
-              <KC l="Services" v={`$${scope.bP.toLocaleString()}`} s={`$${asm.billRate}/hr`} />
-              <KC l="Grand Total" v={`$${scope.gT.toLocaleString()}`} s="All items" h />
+              <KC l="Complexity" v={`${rState.pts} pts`} s={rState.tier} c={TC[qT]} />
+              <KC l="Sessions" v={rState.tS} />
+              <KC l="Hours" v={rState.tH} />
+              <KC l="Services" v={`$${rState.bP.toLocaleString()}`} s={`$${rState.billRate}/hr`} />
+              <KC l="Grand Total" v={`$${rState.gT.toLocaleString()}`} s="All items" h />
             </div>
 
             {/* Hours build-up */}
@@ -529,15 +651,21 @@ function App() {
                     <th style={{padding:'8px 16px',textAlign:'right',fontWeight:'600',color:'#404040',width:'96px'}}>Hours</th>
                   </tr></thead>
                   <tbody>
-                    <tr style={{borderTop:'1px solid #e5e5e5'}}><td style={{padding:'8px 16px'}}>Core sessions ({scope.tS})</td><td style={{padding:'8px 16px',textAlign:'right',fontWeight:'500'}}>{scope.core}</td></tr>
-                    <tr style={{borderTop:'1px solid #e5e5e5'}}><td style={{padding:'8px 16px'}}>Integration support ({intCt} x {asm.integrationHrsPerInteg})</td><td style={{padding:'8px 16px',textAlign:'right',fontWeight:'500'}}>{scope.intH}</td></tr>
-                    {scope.onsH>0 && <tr style={{borderTop:'1px solid #e5e5e5'}}><td style={{padding:'8px 16px'}}>Onsite ({onD} days x {asm.onsiteHrsPerDay})</td><td style={{padding:'8px 16px',textAlign:'right',fontWeight:'500'}}>{scope.onsH}</td></tr>}
-                    <tr style={{borderTop:'1px solid #e5e5e5',background:'#fafafa',fontWeight:'600'}}><td style={{padding:'8px 16px'}}>Base</td><td style={{padding:'8px 16px',textAlign:'right'}}>{scope.base}</td></tr>
-                    {scope.uD.map((u,i) => <tr key={i} style={{borderTop:'1px solid #e5e5e5'}}><td style={{padding:'8px 16px',color:'#b91c1c',display:'flex',alignItems:'center',gap:'4px'}}><Icons.Zap /> {u.n}</td><td style={{padding:'8px 16px',textAlign:'right',color:'#b91c1c',fontWeight:'500'}}>+{u.h}</td></tr>)}
-                    {scope.uT>0 && <tr style={{borderTop:'1px solid #e5e5e5',background:'#fafafa',fontWeight:'600'}}><td style={{padding:'8px 16px'}}>After uplifts</td><td style={{padding:'8px 16px',textAlign:'right'}}>{scope.sub}</td></tr>}
-                    {scope.fA && <tr style={{borderTop:'1px solid #e5e5e5'}}><td style={{padding:'8px 16px',color:'#b45309',display:'flex',alignItems:'center',gap:'4px'}}><Icons.Shield /> Floor ({scope.fl}hr min)</td><td style={{padding:'8px 16px',textAlign:'right',color:'#b45309'}}>{scope.af}</td></tr>}
-                    <tr style={{borderTop:'1px solid #e5e5e5'}}><td style={{padding:'8px 16px'}}>Contingency ({Math.round(asm.contingency*100)}%)</td><td style={{padding:'8px 16px',textAlign:'right',fontWeight:'500'}}>+{scope.cH}</td></tr>
-                    <tr style={{borderTop:'2px solid #171717',background:'#171717',color:'#fff',fontWeight:'700'}}><td style={{padding:'12px 16px'}}>Total Scoped Hours</td><td style={{padding:'12px 16px',textAlign:'right',fontSize:'18px'}}>{scope.tH}</td></tr>
+                    <tr style={{borderTop:'1px solid #e5e5e5'}}><td style={{padding:'8px 16px'}}>Core sessions ({rState.tS})</td><td style={{padding:'8px 16px',textAlign:'right',fontWeight:'500'}}><EN value={rState.core} onChange={v => upd('core', v)} /></td></tr>
+                    <tr style={{borderTop:'1px solid #e5e5e5'}}><td style={{padding:'8px 16px'}}>Integration support ({rState.intCt} x {rState.billRate ? asm.integrationHrsPerInteg : 6})</td><td style={{padding:'8px 16px',textAlign:'right',fontWeight:'500'}}><EN value={rState.intH} onChange={v => upd('intH', v)} /></td></tr>
+                    {rState.onsH > 0 && <tr style={{borderTop:'1px solid #e5e5e5'}}><td style={{padding:'8px 16px'}}>Onsite ({rState.onD} days)</td><td style={{padding:'8px 16px',textAlign:'right',fontWeight:'500'}}><EN value={rState.onsH} onChange={v => upd('onsH', v)} /></td></tr>}
+                    <tr style={{borderTop:'1px solid #e5e5e5',background:'#fafafa',fontWeight:'600'}}><td style={{padding:'8px 16px'}}>Base</td><td style={{padding:'8px 16px',textAlign:'right'}}><EN value={rState.base} onChange={v => upd('base', v)} /></td></tr>
+                    {rState.uD.map((u, i) => <tr key={i} style={{borderTop:'1px solid #e5e5e5'}}>
+                      <td style={{padding:'8px 16px',color:'#b91c1c',display:'flex',alignItems:'center',gap:'4px'}}><Icons.Zap /> <E value={u.n} onChange={v => { const newUD = [...rState.uD]; newUD[i] = {...u, n: v}; upd('uD', newUD); }} /></td>
+                      <td style={{padding:'8px 16px',textAlign:'right',color:'#b91c1c',fontWeight:'500'}}>+<EN value={u.h} onChange={v => { const newUD = [...rState.uD]; newUD[i] = {...u, h: v}; upd('uD', newUD); }} /></td>
+                    </tr>)}
+                    {rState.uT > 0 && <tr style={{borderTop:'1px solid #e5e5e5',background:'#fafafa',fontWeight:'600'}}><td style={{padding:'8px 16px'}}>After uplifts</td><td style={{padding:'8px 16px',textAlign:'right'}}><EN value={rState.sub} onChange={v => upd('sub', v)} /></td></tr>}
+                    {rState.fA && <tr style={{borderTop:'1px solid #e5e5e5'}}>
+                      <td style={{padding:'8px 16px',color:'#b45309',display:'flex',alignItems:'center',gap:'4px'}}><Icons.Shield /> Floor ({rState.fl}hr min)</td>
+                      <td style={{padding:'8px 16px',textAlign:'right',color:'#b45309'}}><EN value={rState.af} onChange={v => upd('af', v)} /></td>
+                    </tr>}
+                    <tr style={{borderTop:'1px solid #e5e5e5'}}><td style={{padding:'8px 16px'}}>Contingency ({Math.round(rState.contingency*100)}%)</td><td style={{padding:'8px 16px',textAlign:'right',fontWeight:'500'}}>+<EN value={rState.cH} onChange={v => upd('cH', v)} /></td></tr>
+                    <tr style={{borderTop:'2px solid #171717',background:'#171717',color:'#fff',fontWeight:'700'}}><td style={{padding:'12px 16px'}}>Total Scoped Hours</td><td style={{padding:'12px 16px',textAlign:'right',fontSize:'18px'}}><EN value={rState.tH} onChange={v => upd('tH', v)} style={{color:'#fff'}} /></td></tr>
                   </tbody>
                 </table>
               </div>
@@ -547,10 +675,10 @@ function App() {
             <div>
               <h2 style={{fontSize:'15px',fontWeight:'700',marginBottom:'8px'}}>Activity Mix</h2>
               <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:'8px'}}>
-                {scope.alloc.map(a => (
+                {rState.alloc.map((a, i) => (
                   <div key={a.activity} style={{padding:'12px',border:'1px solid #e5e5e5',borderRadius:'8px'}}>
                     <div style={{fontSize:'12px',color:'#737373'}}>{AL[a.activity]}</div>
-                    <div style={{fontSize:'18px',fontWeight:'700'}}>{a.hrs} hrs</div>
+                    <div style={{fontSize:'18px',fontWeight:'700'}}><EN value={a.hrs} onChange={v => { const newAlloc = [...rState.alloc]; newAlloc[i] = {...a, hrs: v}; upd('alloc', newAlloc); }} /> hrs</div>
                     <div style={{fontSize:'12px',color:'#a3a3a3'}}>{Math.round(a.pct*100)}%</div>
                   </div>
                 ))}
@@ -565,19 +693,25 @@ function App() {
                   <thead><tr style={{background:'#f5f5f5'}}>
                     <th style={{padding:'8px 16px',textAlign:'left',fontWeight:'600'}}>Topic</th>
                     <th style={{padding:'8px 16px',textAlign:'left',fontWeight:'600'}}>Attendees</th>
-                    <th style={{padding:'8px 16px',textAlign:'center',fontWeight:'600',width:'80px'}}>Sessions</th>
+                    <th style={{padding:'8px 16px',textAlign:'center',fontWeight:'600',width:'100px'}}>Sessions</th>
                   </tr></thead>
                   <tbody>
-                    {SESSION_TOPICS.map((t,i) => (
+                    {rState.sessRows.map((t, i) => (
                       <tr key={t.id} style={{borderTop:'1px solid #e5e5e5',background:i%2?'#fafafa':'#fff'}}>
-                        <td style={{padding:'8px 16px',fontWeight:'500'}}>{t.name}</td>
-                        <td style={{padding:'8px 16px',fontSize:'12px',color:'#525252'}}>{t.attendees}</td>
-                        <td style={{padding:'8px 16px',textAlign:'center',fontWeight:'700'}}>{eSess[t.id]||0}</td>
+                        <td style={{padding:'8px 16px',fontWeight:'500'}}><E value={t.name} onChange={v => { const newRows = [...rState.sessRows]; newRows[i] = {...t, name: v}; upd('sessRows', newRows); }} /></td>
+                        <td style={{padding:'8px 16px',fontSize:'12px',color:'#525252'}}><E value={t.attendees} onChange={v => { const newRows = [...rState.sessRows]; newRows[i] = {...t, attendees: v}; upd('sessRows', newRows); }} /></td>
+                        <td style={{padding:'8px 16px'}}>
+                          <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'6px'}}>
+                            <button type="button" onClick={() => updSessRow(t.id, -1)} style={{width:'24px',height:'24px',border:'1px solid #e5e5e5',borderRadius:'4px',background:'#fff',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}><Icons.Minus /></button>
+                            <span style={{fontSize:'14px',fontWeight:'700',minWidth:'24px',textAlign:'center'}}>{t.count}</span>
+                            <button type="button" onClick={() => updSessRow(t.id, 1)} style={{width:'24px',height:'24px',border:'1px solid #e5e5e5',borderRadius:'4px',background:'#fff',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}><Icons.Plus /></button>
+                          </div>
+                        </td>
                       </tr>
                     ))}
                     <tr style={{borderTop:'2px solid #d4d4d4',background:'#f5f5f5',fontWeight:'700'}}>
                       <td style={{padding:'8px 16px'}} colSpan={2}>Total</td>
-                      <td style={{padding:'8px 16px',textAlign:'center',fontSize:'18px'}}>{scope.tS}</td>
+                      <td style={{padding:'8px 16px',textAlign:'center',fontSize:'18px'}}>{rState.tS}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -585,12 +719,9 @@ function App() {
             </div>
 
             {/* Data Services */}
-            {scope.dL.length > 0 && (
+            {rState.dL.length > 0 && (
               <div>
                 <h2 style={{fontSize:'15px',fontWeight:'700',marginBottom:'8px'}}>Data Services</h2>
-                {scope.dbFee && <div style={{marginBottom:'8px',padding:'8px',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:'6px',fontSize:'13px',color:'#b91c1c',fontWeight:'600'}}>DB fee required -- local system</div>}
-                {scope.noData && <div style={{marginBottom:'8px',padding:'8px',background:'#fffbeb',border:'1px solid #fde68a',borderRadius:'6px',fontSize:'13px',color:'#78350f',fontWeight:'600'}}>Data import not available</div>}
-                {scope.sysWarn && <div style={{marginBottom:'8px',padding:'8px',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:'6px',fontSize:'13px',color:'#b91c1c'}}>{scope.sysWarn}</div>}
                 <div style={{border:'1px solid #e5e5e5',borderRadius:'12px',overflow:'hidden'}}>
                   <table>
                     <thead><tr style={{background:'#f5f5f5'}}>
@@ -600,17 +731,17 @@ function App() {
                       <th style={{padding:'8px 16px',textAlign:'right',fontWeight:'600',width:'80px'}}>Total</th>
                     </tr></thead>
                     <tbody>
-                      {scope.dL.map((d,i) => (
+                      {rState.dL.map((d, i) => (
                         <tr key={i} style={{borderTop:'1px solid #e5e5e5'}}>
-                          <td style={{padding:'8px 16px'}}>{d.name}<div style={{fontSize:'11px',color:'#a3a3a3'}}>{d.sku}</div></td>
-                          <td style={{padding:'8px 16px',textAlign:'center'}}>{d.qty}</td>
-                          <td style={{padding:'8px 16px',textAlign:'center'}}>${d.up.toLocaleString()}</td>
-                          <td style={{padding:'8px 16px',textAlign:'right',fontWeight:'500'}}>${d.total.toLocaleString()}</td>
+                          <td style={{padding:'8px 16px'}}><E value={d.name} onChange={v => { const newDL = [...rState.dL]; newDL[i] = {...d, name: v}; upd('dL', newDL); }} /><div style={{fontSize:'11px',color:'#a3a3a3'}}>{d.sku}</div></td>
+                          <td style={{padding:'8px 16px',textAlign:'center'}}><EN value={d.qty} onChange={v => { const newDL = [...rState.dL]; newDL[i] = {...d, qty: v}; upd('dL', newDL); }} /></td>
+                          <td style={{padding:'8px 16px',textAlign:'center'}}>$<EN value={d.up} onChange={v => { const newDL = [...rState.dL]; newDL[i] = {...d, up: v}; upd('dL', newDL); }} /></td>
+                          <td style={{padding:'8px 16px',textAlign:'right',fontWeight:'500'}}>$<EN value={d.total} onChange={v => { const newDL = [...rState.dL]; newDL[i] = {...d, total: v}; upd('dL', newDL); }} /></td>
                         </tr>
                       ))}
                       <tr style={{borderTop:'2px solid #d4d4d4',background:'#f5f5f5',fontWeight:'700'}}>
                         <td style={{padding:'8px 16px'}} colSpan={3}>Data Subtotal</td>
-                        <td style={{padding:'8px 16px',textAlign:'right'}}>${scope.dC.toLocaleString()}</td>
+                        <td style={{padding:'8px 16px',textAlign:'right'}}>$<EN value={rState.dC} onChange={v => upd('dC', v)} /></td>
                       </tr>
                     </tbody>
                   </table>
@@ -622,84 +753,132 @@ function App() {
             <div style={{padding:'20px',background:'#171717',color:'#fff',borderRadius:'12px'}}>
               <h2 style={{fontSize:'12px',fontWeight:'700',textTransform:'uppercase',letterSpacing:'0.05em',color:'#a3a3a3',marginBottom:'12px'}}>Pricing</h2>
               <div style={{display:'flex',flexDirection:'column',gap:'12px'}}>
-                <div style={s.row}><span style={{fontSize:'14px',color:'#a3a3a3'}}>Professional Services ({scope.tH} hrs x ${asm.billRate})</span><span style={{fontSize:'20px',fontWeight:'900'}}>${scope.bP.toLocaleString()}</span></div>
-                {scope.dC>0 && <div style={s.row}><span style={{fontSize:'14px',color:'#a3a3a3'}}>Data Services</span><span style={{fontSize:'20px',fontWeight:'900'}}>${scope.dC.toLocaleString()}</span></div>}
-                {scope.oC>0 && <div style={s.row}><span style={{fontSize:'14px',color:'#a3a3a3'}}>Onsite ({onD}d x ${asm.onsiteRatePerDay.toLocaleString()})</span><span style={{fontSize:'20px',fontWeight:'900'}}>${scope.oC.toLocaleString()}</span></div>}
-                {scope.trv>0 && <div style={s.row}><span style={{fontSize:'14px',color:'#a3a3a3'}}>Travel (as incurred)</span><span style={{fontSize:'20px',fontWeight:'900'}}>${scope.trv.toLocaleString()}</span></div>}
-                <div style={{paddingTop:'12px',borderTop:'1px solid #404040',...s.row}}>
-                  <span style={{color:'#d4d4d4',fontWeight:'600'}}>Total at Bill Rate</span>
-                  <span style={{fontSize:'28px',fontWeight:'900'}}>${scope.gT.toLocaleString()}</span>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <span style={{fontSize:'14px',color:'#a3a3a3'}}>Professional Services (<EN value={rState.tH} onChange={v => upd('tH', v)} style={{color:'#a3a3a3'}} /> hrs x $<EN value={rState.billRate} onChange={v => upd('billRate', v)} style={{color:'#a3a3a3'}} />/hr)</span>
+                  <span style={{fontSize:'20px',fontWeight:'900'}}>$<EN value={rState.bP} onChange={v => upd('bP', v)} style={{color:'#fff'}} /></span>
                 </div>
-                <div style={s.row}><span style={{fontSize:'12px',color:'#525252'}}>At {Math.round(asm.targetMargin*100)}% margin</span><span style={{fontSize:'13px',fontWeight:'700',color:'#525252'}}>${(scope.mP+scope.dC+scope.oC+scope.trv).toLocaleString()}</span></div>
+                {rState.dC > 0 && <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <span style={{fontSize:'14px',color:'#a3a3a3'}}>Data Services</span>
+                  <span style={{fontSize:'20px',fontWeight:'900'}}>$<EN value={rState.dC} onChange={v => upd('dC', v)} style={{color:'#fff'}} /></span>
+                </div>}
+                {rState.oC > 0 && <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <span style={{fontSize:'14px',color:'#a3a3a3'}}>Onsite</span>
+                  <span style={{fontSize:'20px',fontWeight:'900'}}>$<EN value={rState.oC} onChange={v => upd('oC', v)} style={{color:'#fff'}} /></span>
+                </div>}
+                {rState.trv > 0 && <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <span style={{fontSize:'14px',color:'#a3a3a3'}}>Travel (as incurred)</span>
+                  <span style={{fontSize:'20px',fontWeight:'900'}}>$<EN value={rState.trv} onChange={v => upd('trv', v)} style={{color:'#fff'}} /></span>
+                </div>}
+                <div style={{paddingTop:'12px',borderTop:'1px solid #404040',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <span style={{color:'#d4d4d4',fontWeight:'600'}}>Total at Bill Rate</span>
+                  <span style={{fontSize:'28px',fontWeight:'900'}}>$<EN value={rState.gT} onChange={v => upd('gT', v)} style={{color:'#fff'}} /></span>
+                </div>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <span style={{fontSize:'12px',color:'#525252'}}>At {Math.round(rState.targetMargin*100)}% margin</span>
+                  <span style={{fontSize:'13px',fontWeight:'700',color:'#525252'}}>$<EN value={rState.mP} onChange={v => upd('mP', v)} style={{color:'#525252'}} /></span>
+                </div>
               </div>
             </div>
 
             {/* Notes */}
-            {notes && (
-              <div>
-                <h2 style={{fontSize:'15px',fontWeight:'700',marginBottom:'8px'}}>Scope Notes</h2>
-                <div style={{padding:'16px',background:'#fafafa',border:'1px solid #e5e5e5',borderRadius:'12px',fontSize:'14px',whiteSpace:'pre-wrap'}}>{notes}</div>
+            <div>
+              <h2 style={{fontSize:'15px',fontWeight:'700',marginBottom:'8px'}}>Scope Notes</h2>
+              <div style={{padding:'16px',background:'#fafafa',border:'1px solid #e5e5e5',borderRadius:'12px',fontSize:'14px'}}>
+                <E value={rState.notes || 'Click to add scope notes...'} onChange={v => upd('notes', v)} multiline style={{fontSize:'14px',minHeight:'60px',display:'block',width:'100%'}} />
               </div>
-            )}
+            </div>
 
             {/* Out of Scope */}
             <div style={{padding:'20px',background:'#fafafa',border:'1px solid #e5e5e5',borderRadius:'12px'}}>
               <h2 style={{fontSize:'15px',fontWeight:'700',marginBottom:'4px'}}>Out of Scope</h2>
-              <p style={{fontSize:'12px',color:'#737373',marginBottom:'16px'}}>Unless explicitly stated in this document, Fullbay's delivery will not include the following. Many are available through the Fullbay Professional Services catalog.</p>
-              <div style={{display:'flex',flexDirection:'column',gap:'10px'}}>
-                {OUT_OF_SCOPE.map((row,i) => (
+              <p style={{fontSize:'12px',color:'#737373',marginBottom:'16px'}}>Unless explicitly stated, Fullbay's delivery will not include the following. Many are available through the Fullbay Professional Services catalog.</p>
+              <div style={{display:'flex',flexDirection:'column',gap:'8px',fontSize:'13px',color:'#171717'}}>
+                {[
+                  'Report building, dashboard creation, or custom scripting',
+                  'Process documentation, staff communications, or other assets',
+                  'End-user training',
+                  'Execution of User Acceptance Testing (UAT)',
+                  'Help desk services, or user-level troubleshooting',
+                  'Custom automation or integration middleware',
+                  'Custom software development',
+                  'Coordination with Customer vendors or external consultants',
+                  '3rd-party licenses or subscriptions required for integrations (e.g., Mitchell1 ProDemand)',
+                  'Onsite Support at multiple Customer locations or multiple sites within a 50-mile radius of each other',
+                  'Any services beyond those explicitly listed above',
+                  'New or additional shop locations',
+                ].map((item, i) => (
                   <div key={i} style={{display:'flex',gap:'10px',alignItems:'flex-start'}}>
-                    <span style={{color:'#CC0000',fontWeight:'700',flexShrink:0,marginTop:'1px'}}>✕</span>
-                    <div>
-                      <div style={{fontSize:'13px',color:'#171717'}}>{row.item}</div>
-                      {row.via && <div style={{fontSize:'12px',color:'#737373'}}>→ {row.via}</div>}
-                    </div>
+                    <span style={{color:'#CC0000',fontWeight:'700',flexShrink:0}}>✕</span>
+                    <span>{item}</span>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Terms & Conditions */}
+            {/* Assumptions & Out of Scope — verbatim from approved SOW */}
             <div style={{padding:'20px',background:'#fafafa',border:'1px solid #e5e5e5',borderRadius:'12px'}}>
-              <h2 style={{fontSize:'15px',fontWeight:'700',marginBottom:'16px'}}>Terms & Conditions</h2>
+              <h2 style={{fontSize:'15px',fontWeight:'700',marginBottom:'16px'}}>Assumptions & Terms</h2>
               <div style={{display:'flex',flexDirection:'column',gap:'14px',fontSize:'13px',color:'#404040',lineHeight:'1.6'}}>
-                {[
-                  ['Customer Responsibilities', 'Customer will provide necessary access, named staff, and appropriate hours for inputs, requirements, testing, training, and adoption. Sessions cancelled with less than 24 hours notice may be deducted from the scoped total.'],
-                  ['Data Imports', 'Fullbay will format and map customer data into standard import templates. This does not include cleansing, deduplication, correction, reconciliation, or transformation beyond template mapping. Limited to agreed datasets and up to two (2) import iterations per dataset.'],
-                  ['Integrations & Third-Party Vendors', 'Fullbay is not responsible for third-party delays, unsupported platforms, or connectivity failures beyond our control. Integrations not listed in this scope must be separately scoped in writing.'],
-                  ['Change Orders', 'Any changes to scope, timeline, deliverables, or resource allocations must be submitted in writing. No additional work proceeds without a mutually signed Change Order.'],
-                  ['Not to Exceed', `All quantities are estimates. Any effort beyond the amounts stated in this document requires a mutually executed Change Order at $${asm.billRate}/hr for Service Delivery. Unused sessions expire 90 days after kickoff unless otherwise agreed.`],
-                  ['Fee Schedule', '50% due upon execution of this agreement. 50% due upon completion of configuration. Onsite fees and travel are billed as incurred.'],
-                  ['Place of Performance', 'Fullbay delivers services on Fullbay equipment at Fullbay locations during normal business hours, excluding holidays, unless otherwise stated in the order form.'],
-                  ['Governing Terms', 'This document is generated for planning and scoping purposes. Final terms, pricing, and scope are governed by a mutually signed order form. This document does not constitute a binding agreement until executed by both parties.'],
-                ].map(([title, body]) => (
-                  <div key={title}>
-                    <div style={{fontWeight:'700',marginBottom:'2px'}}>{title}</div>
-                    <div>{body}</div>
-                  </div>
-                ))}
+                <div>
+                  <div style={{fontWeight:'700',marginBottom:'2px'}}>1. Customer Responsibilities</div>
+                  <div>Customer will provide necessary access, named staff, and appropriate hours to provide needed inputs, ensure solution requirements, test necessary workflows, train end users, and track adoption post-launch. Any delays resulting from Customer resource availability may extend the period of performance. Sessions cancelled with less than 24 hours' notice may be deducted from the scoped total.</div>
+                </div>
+                <div>
+                  <div style={{fontWeight:'700',marginBottom:'2px'}}>2. Data Imports</div>
+                  <div>Fullbay will format and map Customer-provided data into Fullbay's standard import templates and may perform limited restructuring required for successful import (e.g., splitting or combining columns to match required fields). This does not include data cleansing, deduplication, correction, reconciliation, or transformation beyond template mapping. Data preparation is limited to the agreed datasets and up to two (2) import iterations per dataset.</div>
+                </div>
+                <div>
+                  <div style={{fontWeight:'700',marginBottom:'2px'}}>3. Integrations & 3rd Party Vendors</div>
+                  <div>Fullbay is not responsible for third-party delays, unsupported platforms, or connectivity failures beyond Fullbay's control. Integrations not included in the purchased integrations plan (including flat-file exports or custom connectivity) must be separately scoped in writing.</div>
+                </div>
+                <div>
+                  <div style={{fontWeight:'700',marginBottom:'2px'}}>4. Advanced Workflows</div>
+                  <div>Unless otherwise stated, complex workflows or advanced configuration of non-standard requirements (e.g., advanced parts pricing, SO schedule workflows, split SO billing, internal PO approval processes, or other specialized processes) are not included in this scope.</div>
+                </div>
+                <div>
+                  <div style={{fontWeight:'700',marginBottom:'2px'}}>5. Place of Performance</div>
+                  <div>Fullbay will deliver the above services on Fullbay equipment at Fullbay locations during normal business hours, excluding holidays; unless otherwise stated within the order form.</div>
+                </div>
+                <div>
+                  <div style={{fontWeight:'700',marginBottom:'2px'}}>6. Change Orders</div>
+                  <div>Any changes to scope, timeline, deliverables, or resource allocations must be submitted in writing. Fullbay will review change requests and respond within three (3) business days with any impacts to the timeline or pricing. No additional work will proceed without a mutually signed Change Order.</div>
+                </div>
+                <div>
+                  <div style={{fontWeight:'700',marginBottom:'2px'}}>7. Not to Exceed</div>
+                  <div>All quantities are estimates and reflect maximum units to be provided by Fullbay under this SOW. Any effort beyond these amounts requires a mutually executed Change Order and will be billed at Fullbay's then-current standard rates. Unused sessions or hours expire 90 days after kickoff unless otherwise agreed. Fullbay's standard rates are currently: Service Delivery: $180/hr.</div>
+                </div>
+                <div>
+                  <div style={{fontWeight:'700',marginBottom:'2px'}}>8. Acceptance Criteria</div>
+                  <div>Deliverables will be deemed accepted upon the earlier of (a) written confirmation by Customer, or (b) five (5) business days following delivery without written notice of material non-conformance. Any remediation will be limited to addressing material deviations from agreed deliverables.</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Fee Schedule */}
+            <div style={{padding:'20px',background:'#fafafa',border:'1px solid #e5e5e5',borderRadius:'12px'}}>
+              <h2 style={{fontSize:'15px',fontWeight:'700',marginBottom:'12px'}}>Fee Schedule</h2>
+              <div style={{fontSize:'13px',color:'#404040',lineHeight:'1.6'}}>
+                <p>Fullbay shall invoice the customer as per the following terms for the agreed upon services.</p>
+                <ul style={{marginTop:'8px',paddingLeft:'20px',display:'flex',flexDirection:'column',gap:'4px'}}>
+                  <li>50% of the Service Package fee is invoiced upfront when the SOW is executed by the Customer.</li>
+                  <li>Remaining 50% of the Service Package fee is invoiced upon completion of the system and data configuration.</li>
+                </ul>
               </div>
             </div>
 
             {/* Signature Block */}
-            <div style={{padding:'20px',border:'2px solid #171717',borderRadius:'12px'}}>
-              <h2 style={{fontSize:'15px',fontWeight:'700',marginBottom:'4px'}}>Authorization</h2>
+            <div style={{padding:'24px',border:'2px solid #171717',borderRadius:'12px'}}>
+              <h2 style={{fontSize:'15px',fontWeight:'700',marginBottom:'4px'}}>Agreement & Signatures</h2>
               <p style={{fontSize:'12px',color:'#737373',marginBottom:'24px'}}>By signing below, both parties agree to the scope, pricing, and terms outlined in this document. Execution via DocuSign is legally binding.</p>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'40px'}}>
-                {['Customer', 'Fullbay'].map(party => (
-                  <div key={party}>
-                    <div style={{fontWeight:'700',fontSize:'12px',textTransform:'uppercase',letterSpacing:'0.05em',color:'#737373',marginBottom:'20px'}}>{party}</div>
-                    <div style={{display:'flex',flexDirection:'column',gap:'24px'}}>
-                      {['Authorized Signature','Printed Name','Title','Date'].map(l => <SigLine key={l} label={l} />)}
-                    </div>
-                  </div>
-                ))}
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'48px'}}>
+                <SigBlock party={rState.co} />
+                <SigBlock party="Fullbay, Inc." />
               </div>
             </div>
 
             {/* Footer */}
             <div style={{padding:'16px',background:'#fafafa',border:'1px solid #e5e5e5',borderRadius:'12px',fontSize:'12px',color:'#737373'}}>
-              <p>Standard Service Delivery rate: ${asm.billRate}/hr. Unused sessions expire 90 days after kickoff. Sessions cancelled with less than 24 hours notice may be deducted from the scoped total.</p>
+              <p>Standard Service Delivery rate: $180/hr. Unused sessions expire 90 days after kickoff. Sessions cancelled with less than 24 hours notice may be deducted from the scoped total.</p>
               <p style={{marginTop:'4px'}}>Generated: {new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})} · fullbay.com · onboarding@fullbay.com</p>
             </div>
 
