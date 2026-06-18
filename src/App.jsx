@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
 
-// ── Lucide icons as inline SVGs ──────────────────────────────────────────────
 const Icon = ({ d, size = 16, stroke = 'currentColor' }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
     stroke={stroke} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -27,7 +26,6 @@ const Icons = {
   Layers: () => <Icon d={["M12 2 2 7l10 5 10-5-10-5Z","M2 17l10 5 10-5","M2 12l10 5 10-5"]} />,
 };
 
-// ── Data ─────────────────────────────────────────────────────────────────────
 const DEFAULT_ASSUMPTIONS = {
   contingency: 0.20, targetMargin: 0.20, billRate: 180,
   integrationHrsPerInteg: 6, onsiteHrsPerDay: 8, onsiteRatePerDay: 1295,
@@ -88,6 +86,10 @@ const TIER_DEFAULTS = {
 const PER_LOC = { discovery: 0, generalMgmt: 1, service: 0, parts: 1, accounting: 1, onsiteLaunch: 0, endUserTraining: 1, liveLaunch: 1, postLaunch: 0 };
 const PER_BRAND = { discovery: 0.5, generalMgmt: 1, service: 0, parts: 0, accounting: 0, onsiteLaunch: 0, endUserTraining: 0, liveLaunch: 0, postLaunch: 0 };
 
+const AL = { kickOff: 'Kick Off', trainingConfig: 'Training & Config', digitalProcedures: 'Digital Procedures', dataWork: 'Data Work', seWorkflow: 'SE Workflow', misc: 'Misc', postLaunch: 'Post-Launch', projectMgmt: 'Project Mgmt' };
+const TL = { standard: 'Standard', complex: 'Complex', high: 'High Complexity' };
+const TC = { standard: '#22c55e', complex: '#f59e0b', high: '#CC0000' };
+
 function scoreComplexity(inp, w) {
   let p = 0;
   if (inp.e2e) p += w.e2e; if (inp.vrms) p += w.vrms;
@@ -135,10 +137,6 @@ function calcScope(inp, sess, a) {
   return { pts, tier, tS, core: Math.round(core*10)/10, intH, onsH, base: Math.round(base*10)/10, uD, uT, sub: Math.round(sub*10)/10, fl, af: Math.round(af*10)/10, fA, cH, tH, alloc, dL, dC, dbFee: sys?.fee === 'db-fee', noData: sys?.fee === 'not-available', sysWarn: sys?.warning, oC, trv, bP, mP, gT };
 }
 
-const AL = { kickOff: 'Kick Off', trainingConfig: 'Training & Config', digitalProcedures: 'Digital Procedures', dataWork: 'Data Work', seWorkflow: 'SE Workflow', misc: 'Misc', postLaunch: 'Post-Launch', projectMgmt: 'Project Mgmt' };
-const TL = { standard: 'Standard', complex: 'Complex', high: 'High Complexity' };
-const TC = { standard: '#22c55e', complex: '#f59e0b', high: '#CC0000' };
-
 // ── Sub-components ────────────────────────────────────────────────────────────
 function Pnl({ title, icon: IconComp, children }) {
   const [o, setO] = useState(true);
@@ -177,7 +175,7 @@ function DT({ active, onClick, label, pts, desc }) {
         <span className="text-sm font-semibold text-neutral-900">{label}</span>
         <div className="flex items-center gap-1">
           {active && <span style={{color:'#dc2626'}}><Icons.Check /></span>}
-          <span className="text-xs font-bold px-1.5 py-0 rounded-full bg-neutral-100 text-neutral-600">+{pts}</span>
+          <span className="text-xs font-bold px-1 rounded-full bg-neutral-100 text-neutral-600">+{pts}</span>
         </div>
       </div>
       <div className="text-xs text-neutral-500">{desc}</div>
@@ -210,7 +208,13 @@ function KC({ l, v, s, c, h }) {
   );
 }
 
-// ── Main App ──────────────────────────────────────────────────────────────────
+const SigLine = ({ label }) => (
+  <div style={{flex:1,minWidth:'200px'}}>
+    <div style={{borderBottom:'1px solid #171717',marginBottom:'4px',height:'32px'}}></div>
+    <div style={{fontSize:'11px',color:'#737373'}}>{label}</div>
+  </div>
+);
+
 export default function App() {
   const [view, setView] = useState('inputs');
   const asm = DEFAULT_ASSUMPTIONS;
@@ -256,6 +260,8 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-neutral-50">
+      <style>{`@media print { @page{size:letter;margin:.5in} body{background:white!important;-webkit-print-color-adjust:exact;print-color-adjust:exact} .no-print{display:none!important} .min-h-screen{min-height:0!important;background:white!important} *{box-shadow:none!important} .sticky{position:static!important} }`}</style>
+
       {/* Header */}
       <div className="border-b border-neutral-200 bg-white no-print" style={{position:'sticky',top:0,zIndex:50}}>
         <div className="max-w-5xl mx-auto px-6 py-3 flex items-center justify-between">
@@ -274,7 +280,7 @@ export default function App() {
                 <Icons.Printer /> Print
               </button>
             </>}
-            <button type="button" onClick={reset} className="text-xs text-neutral-400" style={{background:'none',border:'none',cursor:'pointer',color:'#a3a3a3'}} onMouseEnter={e=>e.target.style.color='#dc2626'} onMouseLeave={e=>e.target.style.color='#a3a3a3'}>
+            <button type="button" onClick={reset} style={{background:'none',border:'none',cursor:'pointer',color:'#a3a3a3'}}>
               <Icons.RotateCcw />
             </button>
           </div>
@@ -295,9 +301,8 @@ export default function App() {
             </div>
 
             <div className="space-y-6">
-              {/* Customer Profile */}
               <Pnl title="Customer Profile" icon={Icons.Building2}>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4" style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'1rem'}}>
+                <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'1rem'}}>
                   <div style={{gridColumn:'span 3'}}>
                     <label className="block text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1">Company Name</label>
                     <input value={co} onChange={e => setCo(e.target.value)} placeholder="e.g., Brady Welding" style={{width:'100%',padding:'8px 12px',border:'2px solid #e5e5e5',borderRadius:'8px',outline:'none',fontSize:'14px'}} />
@@ -308,7 +313,6 @@ export default function App() {
                 </div>
               </Pnl>
 
-              {/* Complexity Drivers */}
               <Pnl title="Complexity Drivers" icon={Icons.Gauge}>
                 <p className="text-xs text-neutral-500 mb-3">Select all that apply. These drive tier and hour uplifts.</p>
                 <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:'8px'}}>
@@ -350,7 +354,6 @@ export default function App() {
                 </div>
               </Pnl>
 
-              {/* Data Migration */}
               <Pnl title="Data Migration" icon={Icons.Database}>
                 <div className="mb-4">
                   <label className="block text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1">Current System</label>
@@ -386,11 +389,10 @@ export default function App() {
                 </div>
               </Pnl>
 
-              {/* Session Plan */}
               <Pnl title="Session Plan" icon={Icons.Clock}>
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-xs text-neutral-500">Auto-suggested for <strong>{TL[qT]}</strong> tier. Adjust as needed.</p>
-                  {sess && <button type="button" onClick={() => setSess(null)} className="text-xs text-red-600 font-semibold" style={{background:'none',border:'none',cursor:'pointer',color:'#dc2626'}}>Reset</button>}
+                  {sess && <button type="button" onClick={() => setSess(null)} style={{background:'none',border:'none',cursor:'pointer',color:'#dc2626',fontSize:'12px',fontWeight:'600'}}>Reset</button>}
                 </div>
                 <div className="border border-neutral-200 rounded-xl overflow-hidden">
                   <table style={{width:'100%',fontSize:'14px',borderCollapse:'collapse'}}>
@@ -431,7 +433,6 @@ export default function App() {
                 </div>
               </Pnl>
 
-              {/* Notes */}
               <div>
                 <label className="block text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1">Scope Notes</label>
                 <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} placeholder="Special requirements, context, risks..." style={{width:'100%',padding:'8px 12px',border:'2px solid #e5e5e5',borderRadius:'8px',outline:'none',fontSize:'14px',resize:'vertical'}} />
@@ -454,12 +455,20 @@ export default function App() {
 
         {view === 'results' && (
           <div className="space-y-6">
+
+            {/* Legal disclaimer banner */}
+            <div style={{padding:'12px 16px',background:'#fef9c3',border:'1px solid #fde047',borderRadius:'8px',fontSize:'12px',color:'#713f12',lineHeight:'1.5'}}>
+              <strong>Preview Document.</strong> This scope is generated for planning purposes. Final terms, pricing, and scope are governed by a mutually signed order form. Any changes to scope, timeline, or deliverables must be submitted in writing and approved via Change Order.
+            </div>
+
+            {/* Header */}
             <div style={{borderBottom:'2px solid #CC0000',paddingBottom:'16px'}}>
               <div style={{fontSize:'11px',fontWeight:'700',letterSpacing:'0.1em',textTransform:'uppercase',color:'#CC0000',marginBottom:'4px'}}>Enterprise Implementation Scope</div>
               <h1 style={{fontSize:'30px',fontWeight:'700',color:'#171717'}}>{co || 'Customer'}</h1>
               <p style={{fontSize:'14px',color:'#737373',marginTop:'4px'}}>{brands} brand{brands!==1?'s':''} / {locs} location{locs!==1?'s':''} / {intCt} integration{intCt!==1?'s':''} / {TL[qT]}</p>
             </div>
 
+            {/* KPI cards */}
             <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:'12px'}}>
               <KC l="Complexity" v={`${scope.pts} pts`} s={TL[qT]} c={TC[qT]} />
               <KC l="Sessions" v={scope.tS} />
@@ -579,7 +588,7 @@ export default function App() {
             {/* Pricing */}
             <div style={{padding:'20px',background:'#171717',color:'#fff',borderRadius:'12px'}}>
               <h2 style={{fontSize:'12px',fontWeight:'700',textTransform:'uppercase',letterSpacing:'0.05em',color:'#a3a3a3',marginBottom:'12px'}}>Pricing</h2>
-              <div className="space-y-3">
+              <div style={{display:'flex',flexDirection:'column',gap:'12px'}}>
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                   <span style={{fontSize:'14px',color:'#a3a3a3'}}>Professional Services ({scope.tH} hrs x ${asm.billRate})</span>
                   <span style={{fontSize:'20px',fontWeight:'900'}}>${scope.bP.toLocaleString()}</span>
@@ -596,7 +605,7 @@ export default function App() {
                   <span style={{fontSize:'14px',color:'#a3a3a3'}}>Travel (as incurred)</span>
                   <span style={{fontSize:'20px',fontWeight:'900'}}>${scope.trv.toLocaleString()}</span>
                 </div>}
-                <div style={{paddingTop:'12px',marginTop:'12px',borderTop:'1px solid #404040',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                <div style={{paddingTop:'12px',marginTop:'4px',borderTop:'1px solid #404040',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                   <span style={{color:'#d4d4d4',fontWeight:'600'}}>Total at Bill Rate</span>
                   <span style={{fontSize:'30px',fontWeight:'900'}}>${scope.gT.toLocaleString()}</span>
                 </div>
@@ -610,17 +619,112 @@ export default function App() {
             {/* Notes */}
             {notes && (
               <div>
-                <h2 style={{fontSize:'16px',fontWeight:'700',color:'#171717',marginBottom:'8px'}}>Notes</h2>
+                <h2 style={{fontSize:'16px',fontWeight:'700',color:'#171717',marginBottom:'8px'}}>Scope Notes</h2>
                 <div style={{padding:'16px',background:'#fafafa',border:'1px solid #e5e5e5',borderRadius:'12px',fontSize:'14px',whiteSpace:'pre-wrap'}}>{notes}</div>
               </div>
             )}
 
-            {/* Assumptions footer */}
-            <div style={{padding:'16px',background:'#fafafa',border:'1px solid #e5e5e5',borderRadius:'12px',fontSize:'12px',color:'#737373'}}>
-              <div style={{fontWeight:'700',color:'#404040',fontSize:'14px',marginBottom:'4px'}}>Assumptions</div>
-              <p>Effort beyond scoped hours requires Change Order at ${asm.billRate}/hr. {Math.round(asm.contingency*100)}% contingency included. 50/50 fee schedule. Sessions expire 90 days after kickoff.</p>
-              <p style={{marginTop:'4px'}}>Generated: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+            {/* Out of Scope */}
+            <div style={{padding:'20px',background:'#fafafa',border:'1px solid #e5e5e5',borderRadius:'12px'}}>
+              <h2 style={{fontSize:'15px',fontWeight:'700',color:'#171717',marginBottom:'4px'}}>Out of Scope</h2>
+              <p style={{fontSize:'12px',color:'#737373',marginBottom:'12px'}}>Unless explicitly stated in this document, Fullbay's delivery will not include the following. Many are available through the Fullbay Professional Services catalog.</p>
+              <div style={{display:'flex',flexDirection:'column',gap:'8px'}}>
+                {[
+                  { item: 'Report building, dashboard creation, or custom scripting', via: 'Available via Professional Services' },
+                  { item: 'Process documentation, staff communications, or other customer-owned assets', via: 'Available via Technical Solution Engineering' },
+                  { item: 'End-user training beyond sessions listed in this scope', via: 'Available via Advanced Feature Training or Additional Training Hours' },
+                  { item: 'Execution of User Acceptance Testing (UAT) — customer is responsible for UAT sign-off', via: null },
+                  { item: 'Help desk services or user-level troubleshooting post-launch', via: 'Covered by Fullbay Customer Success' },
+                  { item: 'Custom automation or integration middleware', via: 'Available via Custom Reporting & Automation' },
+                  { item: 'Custom software development', via: null },
+                  { item: 'Coordination with customer vendors or external consultants', via: 'Available via Technical Solution Engineering' },
+                  { item: '3rd-party licenses or subscriptions required for integrations (e.g., Mitchell1 ProDemand)', via: null },
+                  { item: 'Data cleansing, deduplication, correction, reconciliation, or transformation beyond standard template mapping', via: null },
+                  { item: 'Integrations not explicitly listed in this scope', via: 'Must be separately scoped in writing' },
+                  { item: 'Complex or advanced configuration of non-standard workflows (e.g., advanced parts pricing, split SO billing, internal PO approval processes) unless selected as a complexity driver above', via: null },
+                ].map((row, i) => (
+                  <div key={i} style={{display:'flex',gap:'10px',alignItems:'flex-start'}}>
+                    <span style={{color:'#CC0000',fontWeight:'700',flexShrink:0,marginTop:'1px'}}>✕</span>
+                    <div>
+                      <span style={{fontSize:'13px',color:'#171717'}}>{row.item}</span>
+                      {row.via && <span style={{fontSize:'12px',color:'#737373',display:'block'}}>→ {row.via}</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
+
+            {/* Terms & Conditions */}
+            <div style={{padding:'20px',background:'#fafafa',border:'1px solid #e5e5e5',borderRadius:'12px'}}>
+              <h2 style={{fontSize:'15px',fontWeight:'700',color:'#171717',marginBottom:'12px'}}>Terms & Conditions</h2>
+              <div style={{display:'flex',flexDirection:'column',gap:'12px',fontSize:'13px',color:'#404040',lineHeight:'1.6'}}>
+                <div>
+                  <div style={{fontWeight:'700',marginBottom:'2px'}}>Customer Responsibilities</div>
+                  <div>Customer will provide necessary access, named staff, and appropriate hours for inputs, requirements, testing, training, and adoption. Sessions cancelled with less than 24 hours notice may be deducted from the scoped total.</div>
+                </div>
+                <div>
+                  <div style={{fontWeight:'700',marginBottom:'2px'}}>Data Imports</div>
+                  <div>Fullbay will format and map customer data into standard import templates. This does not include cleansing, deduplication, correction, reconciliation, or transformation beyond template mapping. Limited to agreed datasets and up to two (2) import iterations per dataset.</div>
+                </div>
+                <div>
+                  <div style={{fontWeight:'700',marginBottom:'2px'}}>Integrations & Third-Party Vendors</div>
+                  <div>Fullbay is not responsible for third-party delays, unsupported platforms, or connectivity failures beyond our control. Integrations not listed in this scope must be separately scoped in writing.</div>
+                </div>
+                <div>
+                  <div style={{fontWeight:'700',marginBottom:'2px'}}>Change Orders</div>
+                  <div>Any changes to scope, timeline, deliverables, or resource allocations must be submitted in writing. No additional work proceeds without a mutually signed Change Order.</div>
+                </div>
+                <div>
+                  <div style={{fontWeight:'700',marginBottom:'2px'}}>Not to Exceed</div>
+                  <div>All quantities are estimates. Any effort beyond the amounts stated in this document requires a mutually executed Change Order at ${asm.billRate}/hr for Service Delivery. Unused sessions expire 90 days after kickoff unless otherwise agreed.</div>
+                </div>
+                <div>
+                  <div style={{fontWeight:'700',marginBottom:'2px'}}>Fee Schedule</div>
+                  <div>50% due upon execution of this agreement. 50% due upon completion of configuration. Onsite fees and travel are billed as incurred.</div>
+                </div>
+                <div>
+                  <div style={{fontWeight:'700',marginBottom:'2px'}}>Place of Performance</div>
+                  <div>Fullbay delivers services on Fullbay equipment at Fullbay locations during normal business hours, excluding holidays, unless otherwise stated in the order form.</div>
+                </div>
+                <div>
+                  <div style={{fontWeight:'700',marginBottom:'2px'}}>Governing Terms</div>
+                  <div>This document is generated for planning and scoping purposes. Final terms, pricing, and scope are governed by a mutually signed order form. This document does not constitute a binding agreement until executed by both parties.</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Signature Block */}
+            <div style={{padding:'20px',border:'2px solid #171717',borderRadius:'12px'}}>
+              <h2 style={{fontSize:'15px',fontWeight:'700',color:'#171717',marginBottom:'4px'}}>Authorization</h2>
+              <p style={{fontSize:'12px',color:'#737373',marginBottom:'20px'}}>By signing below, both parties agree to the scope, pricing, and terms outlined in this document. Execution via DocuSign is legally binding.</p>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'32px'}}>
+                <div>
+                  <div style={{fontWeight:'700',fontSize:'13px',marginBottom:'16px',textTransform:'uppercase',letterSpacing:'0.05em',color:'#737373'}}>Customer</div>
+                  <div style={{display:'flex',flexDirection:'column',gap:'20px'}}>
+                    <SigLine label="Authorized Signature" />
+                    <SigLine label="Printed Name" />
+                    <SigLine label="Title" />
+                    <SigLine label="Date" />
+                  </div>
+                </div>
+                <div>
+                  <div style={{fontWeight:'700',fontSize:'13px',marginBottom:'16px',textTransform:'uppercase',letterSpacing:'0.05em',color:'#737373'}}>Fullbay</div>
+                  <div style={{display:'flex',flexDirection:'column',gap:'20px'}}>
+                    <SigLine label="Authorized Signature" />
+                    <SigLine label="Printed Name" />
+                    <SigLine label="Title" />
+                    <SigLine label="Date" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div style={{padding:'16px',background:'#fafafa',border:'1px solid #e5e5e5',borderRadius:'12px',fontSize:'12px',color:'#737373'}}>
+              <p>Standard Service Delivery rate: ${asm.billRate}/hr. Unused sessions expire 90 days after kickoff. Sessions cancelled with less than 24 hours notice may be deducted from the scoped total.</p>
+              <p style={{marginTop:'4px'}}>Generated: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} · fullbay.com · onboarding@fullbay.com</p>
+            </div>
+
           </div>
         )}
       </div>
