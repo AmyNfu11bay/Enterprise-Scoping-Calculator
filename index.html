@@ -58,6 +58,7 @@ svg { display: inline-block; vertical-align: middle; }
   * { box-shadow: none !important; }
   .edit-field, .edit-field-block { border: none !important; background: transparent !important; padding: 0 !important; }
   .edit-hint-bar { display: none !important; }
+  .notes-print-block { display: block !important; }
 }
 </style>
 </head>
@@ -400,6 +401,7 @@ function App() {
       bP: s.bP, mP: s.mP, gT: s.gT,
       billRate: asm.billRate, onD,
       notes,
+      timeline: '',
       sessRows: SESSION_TOPICS.map(t => ({ ...t, count: eSess[t.id] || 0 })),
       extraLines: [],
       peFirm,
@@ -472,7 +474,7 @@ function App() {
               </div>
               <div>
                 <h1 style={{fontSize:'20px',fontWeight:'700',color:'#171717'}}>Enterprise Scoping</h1>
-                <p style={{fontSize:'12px',color:'#737373'}}>Fill in details below. Hours and pricing update live. <span style={{fontWeight:'700',color:'#CC0000'}}>Internal Only — Do not share screen.</span></p>
+                <p style={{fontSize:'12px',color:'#737373'}}>Fill in details below. Hours and pricing update live.</p>
               </div>
             </div>
 
@@ -691,7 +693,21 @@ function App() {
 
             {/* KPI cards */}
             <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:'12px'}}>
-              <KC l="Complexity" v={`${rState.pts} pts`} s={rState.tier} c={TC[qT]} />
+              <div style={{padding:'12px',borderRadius:'12px',border:'1px solid #e5e5e5',background:'#fff'}}>
+                <div style={{fontSize:'11px',fontWeight:'700',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'2px',color:'#737373'}}>Est. Timeline</div>
+                <div style={{display:'flex',alignItems:'baseline',gap:'4px'}}>
+                  <input
+                    type="text"
+                    value={rState.timeline}
+                    onChange={e => upd('timeline', e.target.value)}
+                    placeholder="—"
+                    className="edit-field"
+                    style={{fontSize:'20px',fontWeight:'900',color:'#171717',width:'48px',textAlign:'right'}}
+                  />
+                  {rState.timeline && <span style={{fontSize:'13px',color:'#a3a3a3',fontWeight:'500'}}>wks</span>}
+                </div>
+                <div style={{fontSize:'12px',color:'#a3a3a3',marginTop:'2px'}}>Estimated</div>
+              </div>
               <KC l="Sessions" v={rState.tS} />
               <KC l="Scoped Hours" v={rState.tH} />
               <KC l="Services" v={fmtD(liveBP)} s={`$${rState.billRate}/hr`} />
@@ -833,7 +849,21 @@ function App() {
             <div>
               <h2 style={{fontSize:'15px',fontWeight:'700',marginBottom:'8px'}}>Scope Notes</h2>
               <div style={{padding:'12px',background:'#fafafa',border:'1px solid #e5e5e5',borderRadius:'12px'}}>
-                <EArea value={rState.notes} onChange={v => upd('notes',v)} placeholder="Click to add scope notes..." style={{fontSize:'14px',minHeight:'60px'}} />
+                {/* Screen: scrollable textarea */}
+                <textarea
+                  value={rState.notes}
+                  onChange={e => { if (e.target.value.length <= 40000) upd('notes', e.target.value); }}
+                  placeholder="Click to add scope notes..."
+                  className="edit-field-block no-print"
+                  style={{fontSize:'14px',minHeight:'120px',overflowY:'auto',resize:'vertical'}}
+                />
+                {/* Print: full-height plain div — never clips */}
+                <div className="notes-print-block" style={{fontSize:'14px',color:'#171717',whiteSpace:'pre-wrap',wordBreak:'break-word',lineHeight:'1.6',display:'none'}}>
+                  {rState.notes || ''}
+                </div>
+                {rState.notes && rState.notes.length >= 39000 && (
+                  <div style={{fontSize:'11px',color:'#b45309',marginTop:'4px'}}>{40000 - rState.notes.length} characters remaining</div>
+                )}
               </div>
             </div>
 
