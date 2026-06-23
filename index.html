@@ -700,9 +700,10 @@ function App() {
                     type="text"
                     value={rState.timeline}
                     onChange={e => upd('timeline', e.target.value)}
-                    placeholder="—"
-                    className="edit-field"
-                    style={{fontSize:'20px',fontWeight:'900',color:'#171717',width:'48px',textAlign:'right'}}
+                    placeholder="0"
+                    style={{fontSize:'20px',fontWeight:'900',color:'#171717',width:'52px',textAlign:'center',border:'2px solid #e5e5e5',borderRadius:'6px',padding:'2px 4px',outline:'none',background:'#fff'}}
+                    onFocus={e => e.target.style.borderColor='#CC0000'}
+                    onBlur={e => e.target.style.borderColor='#e5e5e5'}
                   />
                   {rState.timeline && <span style={{fontSize:'13px',color:'#a3a3a3',fontWeight:'500'}}>wks</span>}
                 </div>
