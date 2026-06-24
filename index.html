@@ -58,6 +58,7 @@ svg { display: inline-block; vertical-align: middle; }
   * { box-shadow: none !important; }
   .edit-field, .edit-field-block { border: none !important; background: transparent !important; padding: 0 !important; }
   .edit-hint-bar { display: none !important; }
+  .notes-print-block { display: block !important; }
 }
 </style>
 </head>
@@ -363,6 +364,7 @@ function App() {
   const [hRec, setHRec] = useState(3000);
   const [srcSys, setSrcSys] = useState('');
   const [notes, setNotes] = useState('');
+  const [peFirm, setPeFirm] = useState(false);
 
   const inp = useMemo(() => ({ e2e, vrms, migrationScope: migSc, integrationCount: intCt, multiEntity: mEnt, customWorkflow: cwf, compressedTimeline: comp, onsiteDays: onD, travelEst: trvE, dataScope: dSc, histRecs: hRec, sourceSystem: srcSys, locations: locs }), [e2e, vrms, migSc, intCt, mEnt, cwf, comp, onD, trvE, dSc, hRec, srcSys, locs]);
   const qT = useMemo(() => { const p = scoreComplexity(inp, asm.weights); return getTier(p, inp, asm); }, [inp]);
@@ -399,13 +401,15 @@ function App() {
       bP: s.bP, mP: s.mP, gT: s.gT,
       billRate: asm.billRate, onD,
       notes,
+      timeline: '',
       sessRows: SESSION_TOPICS.map(t => ({ ...t, count: eSess[t.id] || 0 })),
       extraLines: [],
+      peFirm,
     });
     setView('results');
   };
 
-  const reset = () => { setView('inputs'); setCo(''); setBrands(1); setLocs(1); setE2e(false); setVrms(false); setMigSc('none'); setIntCt(0); setMEnt(false); setCwf(false); setComp(false); setOnD(0); setTrvE(0); setDSc({ core4: true, historical: false, lastPerformed: false, globalServices: false, taxLocations: false }); setHRec(3000); setSrcSys(''); setNotes(''); setSess(null); setRState(null); };
+  const reset = () => { setView('inputs'); setCo(''); setBrands(1); setLocs(1); setE2e(false); setVrms(false); setMigSc('none'); setIntCt(0); setMEnt(false); setCwf(false); setComp(false); setOnD(0); setTrvE(0); setDSc({ core4: true, historical: false, lastPerformed: false, globalServices: false, taxLocations: false }); setHRec(3000); setSrcSys(''); setNotes(''); setSess(null); setRState(null); setPeFirm(false); };
 
   const upd = (key, val) => setRState(p => ({...p, [key]: val}));
 
@@ -483,6 +487,10 @@ function App() {
                 <NI label="Brands / Entities" value={brands} onChange={setBrands} min={1} />
                 <NI label="Shop Locations" value={locs} onChange={setLocs} min={1} />
                 <NI label="Integrations" value={intCt} onChange={setIntCt} min={0} hint={intCt>=3?'+4 pts':intCt>=1?'+1 pt':''} />
+                <div style={{display:'flex',alignItems:'center',gap:'10px',padding:'8px 12px',border:'2px solid ' + (peFirm?'#CC0000':'#e5e5e5'),borderRadius:'8px',cursor:'pointer',background:peFirm?'#fff5f5':'#fff',transition:'all 0.15s'}} onClick={() => setPeFirm(!peFirm)}>
+                  <input type="checkbox" id="peFirmChk" checked={peFirm} onChange={e => setPeFirm(e.target.checked)} style={{width:'16px',height:'16px',accentColor:'#CC0000',cursor:'pointer',flexShrink:0}} />
+                  <label htmlFor="peFirmChk" style={{fontSize:'11px',fontWeight:'700',color:peFirm?'#CC0000':'#737373',textTransform:'uppercase',letterSpacing:'0.05em',cursor:'pointer',userSelect:'none'}}>PE Firm</label>
+                </div>
               </div>
             </Panel>
 
@@ -685,7 +693,22 @@ function App() {
 
             {/* KPI cards */}
             <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:'12px'}}>
-              <KC l="Complexity" v={`${rState.pts} pts`} s={rState.tier} c={TC[qT]} />
+              <div style={{padding:'12px',borderRadius:'12px',border:'1px solid #e5e5e5',background:'#fff'}}>
+                <div style={{fontSize:'11px',fontWeight:'700',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'2px',color:'#737373'}}>Est. Timeline</div>
+                <div style={{display:'flex',alignItems:'baseline',gap:'4px'}}>
+                  <input
+                    type="text"
+                    value={rState.timeline}
+                    onChange={e => upd('timeline', e.target.value)}
+                    placeholder="0"
+                    style={{fontSize:'20px',fontWeight:'900',color:'#171717',width:'52px',textAlign:'center',border:'2px solid #e5e5e5',borderRadius:'6px',padding:'2px 4px',outline:'none',background:'#fff'}}
+                    onFocus={e => e.target.style.borderColor='#CC0000'}
+                    onBlur={e => e.target.style.borderColor='#e5e5e5'}
+                  />
+                  {rState.timeline && <span style={{fontSize:'13px',color:'#a3a3a3',fontWeight:'500'}}>wks</span>}
+                </div>
+                <div style={{fontSize:'12px',color:'#a3a3a3',marginTop:'2px'}}>Estimated</div>
+              </div>
               <KC l="Sessions" v={rState.tS} />
               <KC l="Scoped Hours" v={rState.tH} />
               <KC l="Services" v={fmtD(liveBP)} s={`$${rState.billRate}/hr`} />
@@ -827,7 +850,21 @@ function App() {
             <div>
               <h2 style={{fontSize:'15px',fontWeight:'700',marginBottom:'8px'}}>Scope Notes</h2>
               <div style={{padding:'12px',background:'#fafafa',border:'1px solid #e5e5e5',borderRadius:'12px'}}>
-                <EArea value={rState.notes} onChange={v => upd('notes',v)} placeholder="Click to add scope notes..." style={{fontSize:'14px',minHeight:'60px'}} />
+                {/* Screen: scrollable textarea */}
+                <textarea
+                  value={rState.notes}
+                  onChange={e => { if (e.target.value.length <= 40000) upd('notes', e.target.value); }}
+                  placeholder="Click to add scope notes..."
+                  className="edit-field-block no-print"
+                  style={{fontSize:'14px',minHeight:'120px',overflowY:'auto',resize:'vertical'}}
+                />
+                {/* Print: full-height plain div — never clips */}
+                <div className="notes-print-block" style={{fontSize:'14px',color:'#171717',whiteSpace:'pre-wrap',wordBreak:'break-word',lineHeight:'1.6',display:'none'}}>
+                  {rState.notes || ''}
+                </div>
+                {rState.notes && rState.notes.length >= 39000 && (
+                  <div style={{fontSize:'11px',color:'#b45309',marginTop:'4px'}}>{40000 - rState.notes.length} characters remaining</div>
+                )}
               </div>
             </div>
 
@@ -877,6 +914,18 @@ function App() {
                     <div>{body}</div>
                   </div>
                 ))}
+                {rState.peFirm && (
+                  <>
+                    <div>
+                      <div style={{fontWeight:'700',marginBottom:'2px'}}>9. Consolidation of Acquired Businesses</div>
+                      <div>Existing Fullbay customer agreements remain in full force and effect through their current subscription term and are not subject to consolidation, amendment, or repricing under this Agreement. Upon the renewal date of an applicable existing agreement, the customer may request in writing that such agreement be consolidated under this Agreement, subject to written confirmation by Fullbay at that time. Fullbay reserves the right to decline consolidation or to condition it on revised pricing or terms.</div>
+                    </div>
+                    <div>
+                      <div style={{fontWeight:'700',marginBottom:'2px'}}>10. Implementation</div>
+                      <div>Implementation, onboarding, and professional services are not included in this Agreement and are subject to a separate Statement of Work to be mutually agreed upon by the parties.</div>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
