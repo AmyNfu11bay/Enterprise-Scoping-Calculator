@@ -482,7 +482,7 @@ function App() {
               <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'16px',marginTop:'4px'}}>
                 <div style={{gridColumn:'span 3'}}>
                   <label style={{display:'block',fontSize:'11px',fontWeight:'700',color:'#737373',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'4px'}}>Company Name</label>
-                  <input value={co} onChange={e => setCo(e.target.value)} placeholder="e.g., Brady Welding" style={{width:'100%',padding:'8px 12px',border:'2px solid #e5e5e5',borderRadius:'8px',fontSize:'14px'}} />
+                  <input value={co} onChange={e => setCo(e.target.value)} placeholder="e.g., Customer Name" style={{width:'100%',padding:'8px 12px',border:'2px solid #e5e5e5',borderRadius:'8px',fontSize:'14px'}} />
                 </div>
                 <NI label="Brands / Entities" value={brands} onChange={setBrands} min={1} />
                 <NI label="Shop Locations" value={locs} onChange={setLocs} min={1} />
