@@ -102,11 +102,11 @@ const Icons = {
 const DEFAULT_ASSUMPTIONS = {
   contingency: 0.20, targetMargin: 0.20, billRate: 180,
   integrationHrsPerInteg: 6, onsiteHrsPerDay: 8, onsiteRatePerDay: 1295,
-  minFloor: 20, minFloorE2eVrms: 80,
-  alloc: { kickOff: 0.03, trainingConfig: 0.35, digitalProcedures: 0.08, dataWork: 0.15, seWorkflow: 0.10, misc: 0.07, postLaunch: 0.07, projectMgmt: 0.15 },
+  minFloor: 20, minFloorE2eVrms: 40,
+  alloc: { kickOff: 0.03, trainingConfig: 0.35, digitalProcedures: 0.05, dataWork: 0.15, seWorkflow: 0.10, misc: 0.07, postLaunch: 0.07, projectMgmt: 0.15 },
   hrsPerItem: { kickOff: 1, trainingConfig: 1.5, digitalProcedures: 2, dataWork: 2, seWorkflow: 1.5, integrationSupport: 3, onsite: 8, postLaunch: 1, projectMgmt: 1, misc: 1 },
-  uplifts: { e2eDataWork: 40, e2ePM: 10, e2eTraining: 6, vrmsDataWork: 40, vrmsSeWorkflow: 8, vrmsPM: 10, extendedMigration: 10, multiEntity: 8, customWorkflow: 8, compressedPM: 8, compressedMisc: 3 },
-  weights: { e2e: 3, vrms: 4, limitedMigration: 1, extendedMigration: 4, integ1to2: 1, integ3plus: 4, multiEntity: 2, customWorkflow: 2, compressedTimeline: 3 },
+  uplifts: { e2eDataWork: 40, e2ePM: 10, e2eTraining: 6, vrmsDataWork: 20, vrmsSeWorkflow: 8, vrmsPM: 10, extendedMigration: 10, multiEntity: 8, customWorkflow: 8, compressedPM: 8, compressedMisc: 3 },
+  weights: { e2e: 1.5, vrms: 2, limitedMigration: 1, extendedMigration: 2, integ1to2: 1, integ3plus: 2, multiEntity: 2, customWorkflow: 1, compressedTimeline: 3 },
   tierStandardMax: 2, tierComplexMax: 5,
 };
 
